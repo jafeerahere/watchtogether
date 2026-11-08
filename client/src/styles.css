@@ -90,9 +90,12 @@ label { display: grid; gap: 6px; color: var(--muted); font-size: 0.9rem; }
 .brand img { width: 26px; height: 26px; }
 .room-code { font-family: ui-monospace, monospace; color: var(--muted); }
 .count { color: var(--muted); font-size: 0.9rem; }
-.room-main { display: grid; grid-template-columns: 1fr 300px; min-height: 0; }
+.room { position: relative; background: var(--bg); }
+.room-main { display: grid; grid-template-columns: 1fr 340px; min-height: 0; }
+.room.sidebar-collapsed .room-main { grid-template-columns: 1fr; }
 .stage { position: relative; min-height: 0; display: flex; flex-direction: column; padding: 14px; gap: 10px; overflow: hidden; }
-.sidebar { border-left: 1px solid var(--border); background: var(--panel); padding: 14px; display: flex; flex-direction: column; gap: 14px; overflow-y: auto; }
+.sidebar { border-left: 1px solid var(--border); background: var(--panel); display: flex; flex-direction: column; min-height: 0; overflow: hidden; }
+[hidden] { display: none !important; }
 .controls { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 10px 16px; border-top: 1px solid var(--border); background: var(--panel); flex-wrap: wrap; }
 .control-group { display: flex; gap: 8px; flex-wrap: wrap; }
 .btn.control.on { background: #1d2a22; border-color: #2f6b45; color: #bbf7d0; }
@@ -238,8 +241,7 @@ label { display: grid; gap: 6px; color: var(--muted); font-size: 0.9rem; }
 .toast.warn { border-color: #6b4f12; background: #2a2110; color: #fde68a; }
 
 /* ---------- Chat ---------- */
-.chat { position: relative; flex: 1 1 auto; min-height: 280px; display: flex; flex-direction: column; gap: 6px; }
-.chat h3 { font-size: 0.95rem; }
+.chat { position: relative; flex: 1 1 auto; min-height: 0; display: flex; flex-direction: column; gap: 6px; }
 .chat-list {
   flex: 1; min-height: 0; overflow-y: auto; display: flex; flex-direction: column; gap: 2px;
   padding: 8px; background: var(--bg); border: 1px solid var(--border); border-radius: 10px;
@@ -275,4 +277,92 @@ label { display: grid; gap: 6px; color: var(--muted); font-size: 0.9rem; }
 @media (max-width: 860px) {
   .chat { min-height: 0; }
   .chat-list { max-height: 50vh; min-height: 200px; }
+}
+
+/* ---------- Side panel: Chat | People tabs, collapsible ---------- */
+.panel-head { display: flex; align-items: center; gap: 8px; padding: 10px 10px 8px 12px; border-bottom: 1px solid var(--border); }
+.panel-tabs { flex: 1; display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
+.panel-tabs button {
+  font: inherit; font-size: 0.9rem; font-weight: 600; cursor: pointer; padding: 8px 10px; border-radius: 9px;
+  border: 1px solid var(--border); background: var(--panel-2); color: var(--muted);
+  display: inline-flex; align-items: center; justify-content: center; gap: 6px; white-space: nowrap;
+}
+.panel-tabs button:hover { color: var(--text); }
+.panel-tabs button.active { background: #2a2550; border-color: var(--accent); color: var(--text); }
+.tab-count { color: var(--muted); font-weight: 500; font-size: 0.8rem; }
+.unread {
+  min-width: 18px; height: 18px; padding: 0 5px; border-radius: 999px; background: var(--danger); color: #fff;
+  font-size: 0.7rem; font-weight: 700; display: inline-grid; place-items: center;
+}
+.icon-btn {
+  font: inherit; font-size: 1.15rem; line-height: 1; cursor: pointer; display: inline-grid; place-items: center;
+  width: 34px; height: 34px; border-radius: 9px; border: 1px solid var(--border); background: var(--panel-2); color: var(--text);
+}
+.icon-btn:hover { background: #282d3c; }
+.icon-btn.active { background: #2a2550; border-color: var(--accent); color: #fff; }
+.icon-btn:focus-visible, .panel-tabs button:focus-visible, .panel-reopen:focus-visible { outline: 2px solid var(--accent-2); outline-offset: 2px; }
+.panel-body { flex: 1; min-height: 0; display: flex; flex-direction: column; gap: 14px; padding: 10px 12px 12px; overflow-y: auto; }
+.chat-body { overflow: hidden; }
+.people-panel .participants h3 { display: none; }
+
+/* Reopen tab on the stage's right edge when the panel is hidden. */
+.panel-reopen {
+  position: absolute; right: 0; top: 50%; transform: translateY(-50%); z-index: 12; cursor: pointer;
+  display: inline-flex; align-items: center; gap: 6px; padding: 10px 12px 10px 10px;
+  border: 1px solid var(--accent); border-right: 0; border-radius: 12px 0 0 12px;
+  background: var(--accent); color: #fff; font: inherit; font-weight: 600; font-size: 0.85rem;
+  box-shadow: 0 8px 24px #0009; transition: opacity 0.25s;
+}
+.panel-reopen:hover { background: var(--accent-2); }
+.panel-reopen .unread { background: #fff; color: var(--accent); }
+
+/* Gesture camera floats over the stage (bottom-left). */
+.gesture-float { position: absolute; left: 14px; bottom: 14px; z-index: 11; width: 220px; transition: bottom 0.25s; }
+.gesture-float .gesture-panel { background: rgba(23, 26, 35, 0.94); backdrop-filter: blur(6px); box-shadow: 0 12px 32px #000a; padding: 8px; gap: 6px; }
+.gesture-help summary { cursor: pointer; font-size: 0.8rem; color: var(--muted); }
+.gesture-help[open] summary { margin-bottom: 6px; }
+
+/* View-mode switch (default / theatre / full screen). */
+.view-switch { display: inline-flex; gap: 2px; padding: 2px; border: 1px solid var(--border); border-radius: 11px; background: var(--bg); }
+.view-switch .icon-btn { width: 36px; height: 32px; border-color: transparent; background: transparent; color: var(--muted); }
+.view-switch .icon-btn:hover { color: var(--text); background: var(--panel-2); }
+.view-switch .icon-btn.active { color: #fff; background: #2a2550; border-color: var(--accent); }
+
+/* ---------- Theatre: video + chat, edge to edge, no header ---------- */
+.room.mode-theatre, .room.mode-full { grid-template-rows: minmax(0, 1fr) auto; }
+.room.mode-theatre .room-header, .room.mode-full .room-header { display: none; }
+.room.mode-theatre .room-main { grid-template-columns: 1fr 360px; }
+.room.mode-theatre.sidebar-collapsed .room-main { grid-template-columns: 1fr; }
+.room.mode-theatre .stage { padding: 0; gap: 0; }
+.room.mode-theatre .stage-toolbar { padding: 8px 12px; background: var(--panel); border-bottom: 1px solid var(--border); }
+.room.mode-theatre .inline-note { border-radius: 0; }
+.room.mode-theatre .player-frame, .room.mode-full .player-frame { border: 0; border-radius: 0; }
+
+/* ---------- Full screen: video fills the screen, overlays auto-hide ---------- */
+.room.mode-full { grid-template-rows: minmax(0, 1fr); background: #000; }
+.room.mode-full .room-main { grid-template-columns: 1fr 360px; height: 100%; }
+.room.mode-full.sidebar-collapsed .room-main { grid-template-columns: 1fr; }
+.room.mode-full .stage { padding: 0; gap: 0; background: #000; }
+.room.mode-full .stage-toolbar {
+  position: absolute; top: 0; left: 0; right: 0; z-index: 9; padding: 12px 16px 28px;
+  background: linear-gradient(to bottom, rgba(0, 0, 0, 0.85), transparent); transition: opacity 0.25s;
+}
+.room.mode-full .inline-note { position: absolute; top: 56px; left: 16px; z-index: 9; max-width: 60%; transition: opacity 0.25s; }
+.room.mode-full .controls {
+  position: absolute; left: 0; right: 0; bottom: 0; z-index: 20; border-top: 0; padding: 32px 16px 14px;
+  background: linear-gradient(to top, rgba(0, 0, 0, 0.9), rgba(0, 0, 0, 0.6) 55%, transparent); transition: opacity 0.25s;
+}
+.room.mode-full:not(.sidebar-collapsed) .controls { right: 360px; }
+.room.mode-full .gesture-float { bottom: 96px; }
+.room.mode-full.chrome-hidden { cursor: none; }
+.room.mode-full.chrome-hidden .controls,
+.room.mode-full.chrome-hidden .stage-toolbar,
+.room.mode-full.chrome-hidden .inline-note,
+.room.mode-full.chrome-hidden .panel-reopen { opacity: 0; pointer-events: none; }
+.room.mode-full.chrome-hidden .gesture-float { bottom: 14px; }
+
+@media (max-width: 860px) {
+  .room.mode-theatre .room-main, .room.mode-full .room-main { grid-template-columns: 1fr; }
+  .room.mode-full:not(.sidebar-collapsed) .controls { right: 0; }
+  .gesture-float { width: 160px; }
 }

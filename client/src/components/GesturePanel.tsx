@@ -113,14 +113,17 @@ export function GesturePanel({ onGesture, onClose }: Props) {
         {phase === 'ready' &&
           (output.coolingDown ? 'Cooling down…' : seen ? `Seeing: ${seen === 'Chin_Hands' ? 'hands on chin' : seen.replace('_', ' ').toLowerCase()}` : 'Watching for gestures')}
       </div>
-      <ul className="gesture-legend">
-        {REACTION_KINDS.filter((k) => REACTIONS[k].gesture).map((k) => (
-          <li key={k} className={REACTIONS[k].gesture === 'Chin_Hands' && !chinAvailable ? 'unavailable' : undefined}>
-            <span>{REACTIONS[k].emoji}</span> {REACTIONS[k].gestureLabel} → <b>{REACTIONS[k].label}</b>
-          </li>
-        ))}
-      </ul>
-      <p className="hint">Hold a gesture for about a second. For Wow!, keep your face in view.</p>
+      <details className="gesture-help">
+        <summary>Gestures</summary>
+        <ul className="gesture-legend">
+          {REACTION_KINDS.filter((k) => REACTIONS[k].gesture).map((k) => (
+            <li key={k} className={REACTIONS[k].gesture === 'Chin_Hands' && !chinAvailable ? 'unavailable' : undefined}>
+              <span>{REACTIONS[k].emoji}</span> {REACTIONS[k].gestureLabel} → <b>{REACTIONS[k].label}</b>
+            </li>
+          ))}
+        </ul>
+        <p className="hint">Hold a gesture for about a second. For Wow!, keep your face in view.</p>
+      </details>
       {!chinAvailable && phase === 'ready' && <p className="hint">Face model didn't load, so the chin pose is off. Use the Wow! button.</p>}
     </div>
   );

@@ -55,6 +55,21 @@ Everything below marked ✅ was verified on **one Windows 11 machine** with Goog
 | Closing a tab posts "Lia left" | ✅ |
 | 6th message within 5 s is refused with a visible reason; the draft is kept; others never receive it | ✅ |
 
+`e2e/layout.spec.ts`: room layout and view modes.
+
+| Check | Verified |
+|---|---|
+| Chat is the default tab and uses most of the panel height; People is one click away; a half-typed message survives tab switches | ✅ |
+| Collapsing the panel hides it; new messages from others count up on the `‹ 💬 Chat` badge; reopening clears it and shows the newest message | ✅ |
+| Unread also counts while the People tab is open | ✅ |
+| Theatre hides the header and keeps video + chat; it's remembered after a refresh | ✅ |
+| `T`/`F`/`C` shortcuts work, but not while typing in chat | ✅ |
+| `F` enters real browser full screen of the whole room (video only to start); `C` slides chat in and messages keep arriving | ✅ |
+| Full-screen controls hide after ~2.5 s idle and return on mouse movement | ✅ |
+| Leaving full screen returns to the previous layout (theatre, panel open) | ✅ |
+
+Not covered by automation: pressing `Esc` (the browser handles it outside the page). The app listens for the browser's full-screen exit, which is the same path the exit button uses.
+
 `e2e/real-sources.spec.ts`:
 
 | Check | Verified | Notes |

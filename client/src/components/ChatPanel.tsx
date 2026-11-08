@@ -2,6 +2,8 @@ import { useEffect, useLayoutEffect, useRef, useState, type ReactNode } from 're
 import { MAX_CHAT_LENGTH, type Ack, type ChatMessage, type Participant } from '../../../shared/protocol';
 
 interface Props {
+  /** The panel is on screen (not collapsed or behind another tab). */
+  active: boolean;
   messages: ChatMessage[];
   selfId: string;
   participants: Participant[];
@@ -32,7 +34,7 @@ function linkify(text: string): ReactNode[] {
 
 const timeFmt = new Intl.DateTimeFormat(undefined, { hour: 'numeric', minute: '2-digit' });
 
-export function ChatPanel({ messages, selfId, participants, typingIds, onSend, onTyping }: Props) {
+export function ChatPanel({ active, messages, selfId, participants, typingIds, onSend, onTyping }: Props) {
   const listRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
   const [draft, setDraft] = useState('');
@@ -58,6 +60,15 @@ export function ChatPanel({ messages, selfId, participants, typingIds, onSend, o
       setUnseen((n) => n + added);
     }
   }, [messages, selfId]);
+
+  // Coming back into view (panel reopened, tab switched): show the newest messages.
+  useLayoutEffect(() => {
+    if (!active) return;
+    const el = listRef.current;
+    if (el) el.scrollTop = el.scrollHeight;
+    atBottom.current = true;
+    setUnseen(0);
+  }, [active]);
 
   const onScroll = () => {
     const el = listRef.current;
@@ -122,7 +133,6 @@ export function ChatPanel({ messages, selfId, participants, typingIds, onSend, o
 
   return (
     <section className="chat" aria-label="Room chat" data-testid="chat">
-      <h3>Chat</h3>
       <div className="chat-list" ref={listRef} onScroll={onScroll} role="log" aria-live="polite" data-testid="chat-list">
         {messages.length === 0 && <p className="chat-empty">No messages yet. Say hi 👋</p>}
         {messages.map((m, i) => {

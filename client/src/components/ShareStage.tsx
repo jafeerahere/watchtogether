@@ -15,11 +15,13 @@ interface Props {
   hint: ContentHint;
   onHintChange: (hint: ContentHint) => void;
   onStop: () => void;
+  /** Room-level full screen (not just the video), so memes and chat stay available. */
+  fullscreen: boolean;
+  onToggleFullscreen: () => void;
 }
 
-export function ShareStage({ share, isSharer, sharerName, stream, connection, hint, onHintChange, onStop }: Props) {
+export function ShareStage({ share, isSharer, sharerName, stream, connection, hint, onHintChange, onStop, fullscreen, onToggleFullscreen }: Props) {
   const videoRef = useRef<HTMLVideoElement>(null);
-  const frameRef = useRef<HTMLDivElement>(null);
   const [volume, setVolume] = useState(1);
   const [needsClick, setNeedsClick] = useState(false);
   const [hasFrames, setHasFrames] = useState(false);
@@ -92,8 +94,8 @@ export function ShareStage({ share, isSharer, sharerName, stream, connection, hi
                 <input type="range" min={0} max={1} step={0.05} value={volume} onChange={(e) => setVolume(Number(e.target.value))} aria-label="Shared audio volume" />
               </label>
             )}
-            <button className="btn small" onClick={() => frameRef.current?.requestFullscreen?.()}>
-              ⛶ Fullscreen
+            <button className="btn small" onClick={onToggleFullscreen} title="Full screen keeps memes and chat available (F)">
+              {fullscreen ? '⤡ Exit full screen' : '⛶ Full screen'}
             </button>
           </>
         )}
@@ -101,7 +103,7 @@ export function ShareStage({ share, isSharer, sharerName, stream, connection, hi
 
       {isSharer && !share.hasAudio && <p className="inline-note">{noShareAudioReason(share.surface)}</p>}
 
-      <div className="player-frame" ref={frameRef}>
+      <div className="player-frame">
         <video
           ref={videoRef}
           className="share-video"

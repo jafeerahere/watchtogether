@@ -51,6 +51,17 @@ Full mesh, one `voice` RTCPeerConnection per pair, using the **perfect negotiati
 
 The *Wow!* pose (both hands on the chin) isn't a built-in MediaPipe gesture. When two hands are visible, `FaceDetector` (BlazeFace) also runs. The chin is estimated from the eye and mouth keypoints (mouth + 0.55 × eyes→mouth, so it follows head tilt). The pose matches when both hands have a contact landmark (wrist, thumb, finger bases or tips) within 0.7 × face width of the chin, sit below the eyes, and are two distinct hands. When both hands are merely near the face, built-in gestures are suppressed so an open palm under the chin doesn't fire *Wait, doubt!*. `GestureDetector` turns frame labels into deliberate reactions: score ≥ 0.6, hold 700 ms, flicker tolerance 250 ms, 3 s cooldown, must release before repeating. The client applies a 2.5 s cooldown shared with the manual buttons; the server enforces 1 s per person. Only `{kind, via}` is sent.
 
+## Layout and view modes
+
+`useRoomLayout` owns the layout state so `Room` stays focused on media:
+
+- **Side panel:** Chat and People tabs; both stay mounted (hidden with the `hidden` attribute), so a chat draft and scroll position survive tab switches and collapsing. Unread = messages from others newer than the last time chat was on screen; history received on (re)join counts as read.
+- **Theatre:** a CSS mode on the room root that drops the header and padding; video and panel go edge to edge.
+- **Full screen:** `requestFullscreen()` on the **whole room** (not the `<video>`), so memes, the floating gesture camera, and the chat panel still work inside it. It starts video-only, and the toolbar and controls become overlays that fade after 2.5 s without mouse or keyboard activity (not while hovered or while typing in chat). A `fullscreenchange` listener restores the previous layout however full screen ends (Esc, button, browser UI). If the browser refuses full screen, theatre mode is used instead.
+- **Shortcuts:** `T`, `F`, `C`, ignored while focus is in an input, or with Ctrl/Cmd/Alt held.
+- **Persistence:** default/theatre, panel open/closed, and the active tab are stored in `localStorage` (per viewer, guarded for private mode). Full screen isn't restored, since browsers require a click to enter it.
+- The gesture camera moved from the side panel to a floating preview at the stage's bottom-left, so the panel can be all chat.
+
 ## Chat
 
 Chat rides the same Socket.IO connection as room state; no extra service.

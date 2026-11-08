@@ -26,7 +26,8 @@ Built first for studying with friends: share your slides or notes, and when some
 - Each person's row shows whether they're connected directly or through a TURN relay.
 
 **💬 Live chat**
-- Real-time room chat in the sidebar, with "Sam is typing…" indicators and clickable links.
+- Real-time room chat filling the side panel (People is the second tab), with "Sam is typing…" indicators and clickable links.
+- Collapse the panel with `›` to give the video the full width; new messages show as an unread badge on the `‹ 💬 Chat` tab.
 - People who join late or refresh get the recent history (last 200 messages).
 - "Sam joined" / "Sam left" notices, without spam when someone just refreshes.
 - Enter sends, Shift+Enter adds a new line. Messages are plain text (no HTML injection), up to 500 characters, rate-limited to 5 per 5 seconds.
@@ -44,6 +45,22 @@ Built first for studying with friends: share your slides or notes, and when some
 | Thumbs-up | Victory | Open palm | Both hands on your chin | Button only |
 
 Mic, camera (gestures), and screen share are separate controls. The host role survives a page refresh and can be handed to someone else.
+
+### View modes
+
+Switch with the buttons at the bottom right, or the keyboard:
+
+| Mode | Key | What you see |
+|---|---|---|
+| **Default** | | Header, stage, and the Chat/People panel |
+| **Theatre** | `T` | Just the video and chat, edge to edge |
+| **Full screen** | `F` | Browser full screen, video only. Controls fade out when the mouse is idle. Memes still play, and `C` slides chat in |
+
+`C` shows or hides the chat in any mode, and `Esc` leaves full screen back to where you were. Your layout is remembered for next time.
+
+| Theatre | Full screen |
+|---|---|
+| ![Theatre mode: video and chat edge to edge](docs/images/theatre.png) | ![Full screen: the video fills the screen with controls overlaid](docs/images/fullscreen.png) |
 
 | Start a room | Pick what to watch |
 |---|---|
@@ -129,6 +146,7 @@ npm run build && npm run test:e2e   # multi-person browser tests (uses your inst
 The end-to-end suite runs up to five separate browser sessions on one machine. It covers:
 - invite → screen share → voice → memes → synced YouTube and direct links → late join → full room → host refresh
 - live chat: typing indicator, links, HTML shown as text, history for late joiners and refreshes, join/leave notices, rate limit
+- layout: Chat/People tabs, collapsing with an unread badge, theatre (remembered after refresh), real full screen with auto-hiding controls, keyboard shortcuts
 - a relay-only run through a TURN server
 
 **Not yet verified:** two real devices on different networks, real hand gestures in front of a real camera, and Firefox, Safari, and mobile browsers. The full breakdown, with measured sync offsets and a manual two-device checklist, is in [docs/TESTING.md](docs/TESTING.md).

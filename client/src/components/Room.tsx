@@ -10,6 +10,8 @@ import { LinkStage } from './LinkStage';
 import { MemeOverlay } from './MemeOverlay';
 import { Participants, RemoteAudio } from './Participants';
 import { ChatPanel } from './ChatPanel';
+import { useRoomLayout, type ViewMode } from '../hooks/useRoomLayout';
+import { ViewIcon } from './ViewIcon';
 import { ShareStage, type ContentHint } from './ShareStage';
 
 const REACTION_COOLDOWN_MS = 2500;
@@ -22,6 +24,7 @@ interface Props {
 
 export function Room({ roomId, name, onLeave }: Props) {
   const { status, error, state, selfId, ice, socket, clock, notices, notify, onReaction, messages, typingIds } = useRoom(roomId, name);
+  const layout = useRoomLayout(messages, selfId, notify);
   const isHost = !!state && !!selfId && state.hostId === selfId;
   const participants = state?.participants ?? [];
   const ids = useMemo(() => participants.map((p) => p.id), [participants]);
@@ -261,8 +264,20 @@ export function Room({ roomId, name, onLeave }: Props) {
   const isSharer = state.share?.sharerId === selfId;
   const screenForGuest = remoteScreen && remoteScreen.peerId === state.share?.sharerId ? remoteScreen.stream : null;
 
+  const { mode, sidebarOpen, tab, unread, chromeHidden } = layout;
+  const viewButtons: { mode: ViewMode; label: string; key: string }[] = [
+    { mode: 'default', label: 'Default view', key: '' },
+    { mode: 'theatre', label: 'Theatre mode: video and chat', key: 'T' },
+    { mode: 'full', label: 'Full screen', key: 'F' },
+  ];
+
   return (
-    <div className="room">
+    <div
+      ref={layout.roomRef}
+      className={`room mode-${mode}${sidebarOpen ? '' : ' sidebar-collapsed'}${chromeHidden ? ' chrome-hidden' : ''}`}
+      data-view={mode}
+      data-testid="room"
+    >
       <header className="room-header">
         <a className="brand" href="/" onClick={(e) => (e.preventDefault(), onLeave())}>
           <img src="/favicon.svg" alt="" /> WatchTogether
@@ -292,6 +307,8 @@ export function Room({ roomId, name, onLeave }: Props) {
               hint={hint}
               onHintChange={changeHint}
               onStop={() => stopShare()}
+              fullscreen={mode === 'full'}
+              onToggleFullscreen={() => (mode === 'full' ? layout.exitFullTo() : layout.setView('full'))}
             />
           ) : state.mode === 'link' && state.link ? (
             <LinkStage
@@ -314,35 +331,68 @@ export function Room({ roomId, name, onLeave }: Props) {
             />
           )}
           <MemeOverlay reactions={memes} />
+          {/* Gesture camera floats over the stage so the side panel stays free for chat. */}
+          {cameraOn && (
+            <div className="gesture-float">
+              <GesturePanel
+                onGesture={(kind) => sendReaction(kind, 'gesture')}
+                onClose={(err) => {
+                  setCameraOn(false);
+                  socket.emit('profile:update', { gestures: false });
+                  if (err) notify(err, 'warn');
+                }}
+              />
+            </div>
+          )}
+          {!sidebarOpen && (
+            <button className="panel-reopen" onClick={() => layout.openTab('chat')} title="Show chat (C)" data-testid="panel-open">
+              <span aria-hidden>‹</span> 💬 Chat
+              {unread > 0 && (
+                <span className="unread" data-testid="unread-badge">
+                  {unread}
+                </span>
+              )}
+            </button>
+          )}
         </section>
 
-        <aside className="sidebar">
-          <Participants
-            participants={participants}
-            selfId={selfId}
-            hostId={state.hostId}
-            isHost={isHost}
-            voiceStreams={voiceStreams}
-            micStream={micStream}
-            statuses={statuses}
-            lastReaction={lastReaction}
-            onMakeHost={(id) => socket.emit('host:transfer', id)}
-          />
-          <label className="volume block">
-            Voice volume
-            <input type="range" min={0} max={1} step={0.05} value={voiceVolume} onChange={(e) => setVoiceVolume(Number(e.target.value))} />
-          </label>
-          {cameraOn && (
-            <GesturePanel
-              onGesture={(kind) => sendReaction(kind, 'gesture')}
-              onClose={(err) => {
-                setCameraOn(false);
-                socket.emit('profile:update', { gestures: false });
-                if (err) notify(err, 'warn');
-              }}
+        <aside className="sidebar" hidden={!sidebarOpen} data-testid="side-panel">
+          <div className="panel-head">
+            <div className="panel-tabs" role="tablist" aria-label="Side panel">
+              <button role="tab" aria-selected={tab === 'chat'} className={tab === 'chat' ? 'active' : ''} onClick={() => layout.openTab('chat')} data-testid="tab-chat">
+                💬 Chat
+                {unread > 0 && <span className="unread">{unread}</span>}
+              </button>
+              <button role="tab" aria-selected={tab === 'people'} className={tab === 'people' ? 'active' : ''} onClick={() => layout.openTab('people')} data-testid="tab-people">
+                👥 People <span className="tab-count">{participants.length}/4</span>
+              </button>
+            </div>
+            <button className="icon-btn" onClick={() => layout.setSidebarOpen(false)} title="Hide panel (C)" aria-label="Hide side panel" data-testid="panel-close">
+              ›
+            </button>
+          </div>
+
+          <div className="panel-body people-panel" role="tabpanel" hidden={tab !== 'people'}>
+            <Participants
+              participants={participants}
+              selfId={selfId}
+              hostId={state.hostId}
+              isHost={isHost}
+              voiceStreams={voiceStreams}
+              micStream={micStream}
+              statuses={statuses}
+              lastReaction={lastReaction}
+              onMakeHost={(id) => socket.emit('host:transfer', id)}
             />
-          )}
+            <label className="volume block">
+              Voice volume
+              <input type="range" min={0} max={1} step={0.05} value={voiceVolume} onChange={(e) => setVoiceVolume(Number(e.target.value))} />
+            </label>
+          </div>
+
+          <div className="panel-body chat-body" role="tabpanel" hidden={tab !== 'chat'}>
           <ChatPanel
+            active={layout.chatVisible}
             messages={messages}
             selfId={selfId}
             participants={participants}
@@ -360,6 +410,7 @@ export function Room({ roomId, name, onLeave }: Props) {
             }
             onTyping={(typing) => socket.emit('chat:typing', typing)}
           />
+          </div>
         </aside>
       </main>
 
@@ -417,6 +468,26 @@ export function Room({ roomId, name, onLeave }: Props) {
         </div>
 
         <div className="control-group">
+          <div className="view-switch" role="group" aria-label="View mode">
+            {viewButtons.map((v) => (
+              <button
+                key={v.mode}
+                className={`icon-btn ${mode === v.mode ? 'active' : ''}`}
+                aria-pressed={mode === v.mode}
+                onClick={() => {
+                  // Clicking the active mode turns it off; leaving full screen returns to the previous layout.
+                  if (v.mode === mode && mode === 'full') layout.exitFullTo();
+                  else if (v.mode === mode) layout.setView('default');
+                  else layout.setView(v.mode);
+                }}
+                title={v.key ? `${v.label} (${v.key})` : v.label}
+                aria-label={v.label}
+                data-testid={`view-${v.mode}`}
+              >
+                <ViewIcon mode={v.mode} />
+              </button>
+            ))}
+          </div>
           <button className="btn danger" onClick={onLeave}>
             Leave
           </button>
