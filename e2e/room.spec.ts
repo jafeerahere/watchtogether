@@ -10,8 +10,8 @@ import { expect, test, type Browser, type Locator, type Page } from '@playwright
 
 let mediaServer: Server;
 
-// Meme clips aren't in the public repo (client/public/memes/README.md). With them, check they play
-// unmuted; without them, check the emoji fallback card appears instead.
+// With the meme clips present, check they play unmuted; if someone removed them, check the emoji
+// fallback card appears instead.
 const HAS_CLIPS = existsSync('client/public/memes/got-it.mp4');
 
 async function expectMemeMedia(meme: Locator) {

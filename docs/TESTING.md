@@ -32,7 +32,7 @@ Everything below marked ✅ was verified on **one Windows 11 machine** with Goog
 | Voice: both mics on → connected both ways, remote audio element playing | ✅ (Chrome fake mic) | |
 | Voice stream and screen stream are separate streams/elements | ✅ | |
 | Button reaction → meme with sender's name shown to everyone; cooldown disables and re-enables buttons | ✅ | |
-| All five memes (*Got it*, *Let's go*, *Wait, doubt!*, *Wow!*, button-only *Haha*) show for the other person: with local clips they play **unmuted**; without clips (a fresh clone) the emoji fallback card shows | ✅ both modes | |
+| All five memes (*Got it*, *Let's go*, *Wait, doubt!*, *Wow!*, button-only *Haha*) show for the other person: with local clips they play **unmuted**; with the clips removed, the emoji fallback card shows | ✅ both modes | |
 | DRM link → explanation + "Share a tab instead" | ✅ | |
 | Direct media link: play / seek / pause sync | ✅ | play 0.05–0.07 s, seek ≈0.23 s, pause 0.00 s apart |
 | Late joiner lands at the live position | ✅ | ≈0.2 s apart |

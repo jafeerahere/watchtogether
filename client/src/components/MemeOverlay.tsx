@@ -58,7 +58,7 @@ export function MemeOverlay({ reactions }: { reactions: ReactionEvent[] }) {
 
 function MemeVideo({ meta }: { meta: ReactionMeta }) {
   const ref = useRef<HTMLVideoElement>(null);
-  // Clips aren't shipped in the public repo (see client/public/memes/README.md); fall back to the emoji card.
+  // If a clip is missing or can't play (see client/public/memes/README.md), fall back to the emoji card.
   const [missing, setMissing] = useState(false);
   useEffect(() => {
     const v = ref.current;

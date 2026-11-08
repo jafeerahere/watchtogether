@@ -26,6 +26,7 @@ Built first for studying with friends: share your slides or notes, and when some
 **✋ Gesture memes**
 - Camera is **off by default**. When on, MediaPipe recognizes gestures **on your device**, and only the reaction is sent to the room.
 - Hold a gesture for about a second; a cooldown prevents spam. Every reaction also has a button for people without cameras.
+- Each reaction plays a short viral meme clip with sound for the whole room.
 
 | Gesture | Reaction |
 |---|---|
@@ -73,7 +74,7 @@ Browsers only allow the mic, camera, and screen capture over **HTTPS** (or on `l
 
 ## Meme clips
 
-Each reaction can play a short video clip with sound. **Clips aren't included in this repo**; without them, reactions show animated emoji cards (like the screenshot above). To add your own, see [client/public/memes/README.md](client/public/memes/README.md) for file names and an ffmpeg one-liner. Use clips you have the rights to.
+Every reaction plays a short viral meme clip **with sound** for the whole room, and that's the signature feature. The clips live in `client/public/memes/`, with their sources credited in [client/public/memes/README.md](client/public/memes/README.md). Swap in your own by replacing a file (there's an ffmpeg one-liner for trimming). If a clip is missing, that reaction falls back to an animated emoji card, like the screenshot above.
 
 To add or change reactions, edit `shared/reactions.ts`:
 - **Captions, colors, durations:** set on each reaction.
