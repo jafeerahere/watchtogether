@@ -1,0 +1,12 @@
+node_modules/
+dist/
+.env
+*.pem
+certs/
+client/public/mediapipe/
+test-results/
+playwright-report/
+
+# Meme clips are third-party content: kept locally, not published. See client/public/memes/README.md.
+client/public/memes/*
+!client/public/memes/README.md
