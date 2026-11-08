@@ -9,7 +9,7 @@ Everything below marked ✅ was verified on **one Windows 11 machine** with Goog
 
 ## Automated tests
 
-### Unit (`npm test`, Vitest, 41 tests)
+### Unit (`npm test`, Vitest, 50 tests)
 
 - Room rules: creation, 4-person cap, a refreshing tab reclaims its seat instead of taking a new one, host keeps the role through a 20 s disconnect grace and then the longest-present guest is promoted, only the host can share/link/control, share ends when the sharer leaves, link replaces share, host handoff stops the old host's share, empty rooms expire.
 - Playback timeline math (`expectedPosition`) with play/pause/seek/rate, plus rejection of malformed control messages.
@@ -17,6 +17,7 @@ Everything below marked ✅ was verified on **one Windows 11 machine** with Goog
 - Link classification: YouTube variants (`watch`, `youtu.be`, `shorts`, `live`, `m.`, `t=` start times), direct files, Dropbox rewrite, and explained rejections (DRM services, playlists, HLS/DASH, Drive, Vimeo and other page hosts, MKV, plain web pages, `file://`).
 - Gesture detector: fires after the hold and not before; no repeat while still held; re-fires after release + cooldown; cooldown applies across gestures; tolerates one-frame recognizer flicker; resets on real gaps; ignores low-confidence and unmapped gestures; manual buttons start the cooldown.
 - TURN: coturn REST credentials verify against an independent HMAC; static credentials; relay policy.
+- Chat: messages carry sender and server time and go into history; empty, non-text, and outsider messages are rejected; 5-per-5 s rate limit is per person; history is capped at 200; late joiners get earlier messages; join/leave notices fire, but a refresh or reconnect stays silent; text cleaning (control characters, line breaks, length cap; markup kept as text).
 - Wow pose (`chinPose.ts`) on synthetic landmarks: both hands cupping the chin (also with a tilted head) fires; one hand, no face, hands far away, hands on the forehead, and one hand reported twice don't; two hands near the face suppress the built-in gestures so an open palm there isn't read as *Wait, doubt!*.
 
 ### End-to-end (`npm run build && npm run test:e2e`, Playwright + installed Chrome, headless)
@@ -39,6 +40,20 @@ Everything below marked ✅ was verified on **one Windows 11 machine** with Goog
 | Gesture camera: on-device gesture + face models load locally and reach "ready" (Wow! pose available); others see 📷 | ✅ (fake camera, so no hands and no gesture fired) | |
 | 5th person sees "room is full" | ✅ | |
 | Host refreshes → still host, room keeps going | ✅ | |
+
+`e2e/chat.spec.ts`: live chat between three browser sessions.
+
+| Check | Verified |
+|---|---|
+| "Gus joined" notice reaches others live | ✅ |
+| "Gus is typing…" shows while typing and clears after sending | ✅ |
+| Enter sends; Shift+Enter keeps a line break; sender sees "You", others see the name | ✅ |
+| `<img onerror=…>` in a message renders as text: no element, no script runs | ✅ |
+| `https://…` becomes a link opening in a new tab | ✅ |
+| Late joiner gets the history | ✅ |
+| Guest refresh: rejoins automatically, history restored, no "left/joined" spam | ✅ |
+| Closing a tab posts "Lia left" | ✅ |
+| 6th message within 5 s is refused with a visible reason; the draft is kept; others never receive it | ✅ |
 
 `e2e/real-sources.spec.ts`:
 

@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState, type CSSProperties } from 'react';
-import type { ReactionEvent } from '../../../shared/protocol';
+import type { Ack, ReactionEvent } from '../../../shared/protocol';
 import { memeDuration, REACTIONS, REACTION_KINDS, type ReactionKind } from '../../../shared/reactions';
 import { useRoom } from '../hooks/useRoom';
 import { PeerMesh, type LinkStatus } from '../rtc/PeerMesh';
@@ -9,6 +9,7 @@ import { IdleStage } from './IdleStage';
 import { LinkStage } from './LinkStage';
 import { MemeOverlay } from './MemeOverlay';
 import { Participants, RemoteAudio } from './Participants';
+import { ChatPanel } from './ChatPanel';
 import { ShareStage, type ContentHint } from './ShareStage';
 
 const REACTION_COOLDOWN_MS = 2500;
@@ -20,7 +21,7 @@ interface Props {
 }
 
 export function Room({ roomId, name, onLeave }: Props) {
-  const { status, error, state, selfId, ice, socket, clock, notices, notify, onReaction } = useRoom(roomId, name);
+  const { status, error, state, selfId, ice, socket, clock, notices, notify, onReaction, messages, typingIds } = useRoom(roomId, name);
   const isHost = !!state && !!selfId && state.hostId === selfId;
   const participants = state?.participants ?? [];
   const ids = useMemo(() => participants.map((p) => p.id), [participants]);
@@ -341,6 +342,24 @@ export function Room({ roomId, name, onLeave }: Props) {
               }}
             />
           )}
+          <ChatPanel
+            messages={messages}
+            selfId={selfId}
+            participants={participants}
+            typingIds={typingIds}
+            onSend={(text) =>
+              new Promise((resolve) => {
+                if (!socket.connected) {
+                  resolve({ ok: false, error: 'Not connected. Your message will need to be sent again.' });
+                  return;
+                }
+                socket.timeout(5000).emit('chat:send', text, (err: Error | null, res: Ack) =>
+                  resolve(err ? { ok: false, error: "Couldn't send. Check your connection and try again." } : res),
+                );
+              })
+            }
+            onTyping={(typing) => socket.emit('chat:typing', typing)}
+          />
         </aside>
       </main>
 

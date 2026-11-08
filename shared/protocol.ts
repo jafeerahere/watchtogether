@@ -10,6 +10,12 @@ export const MAX_NAME_LENGTH = 32;
 export const HOST_GRACE_MS = 20_000;
 /** Server-side floor between two reactions from the same person (clients use a longer cooldown). */
 export const SERVER_REACTION_MIN_INTERVAL_MS = 1_000;
+export const MAX_CHAT_LENGTH = 500;
+/** Messages kept per room (in memory) and sent to people when they join. */
+export const CHAT_HISTORY_LIMIT = 200;
+/** Chat rate limit: at most this many messages per window, per person. */
+export const CHAT_BURST = 5;
+export const CHAT_WINDOW_MS = 5_000;
 
 export type RoomMode = 'idle' | 'link' | 'share';
 
@@ -63,6 +69,16 @@ export interface ReactionEvent {
   at: number;
 }
 
+export interface ChatMessage {
+  id: string;
+  /** 'system' messages are room notices such as "Sam joined". */
+  kind: 'user' | 'system';
+  fromId: string | null;
+  fromName: string | null;
+  text: string;
+  at: number;
+}
+
 export type SignalChannel = 'voice' | 'screen';
 
 // Structural copies of the DOM WebRTC types, so this file also compiles on the server (no DOM lib).
@@ -95,7 +111,7 @@ export interface IceConfig {
 export type JoinError = 'not-found' | 'full' | 'bad-request';
 
 export type JoinResponse =
-  | { ok: true; selfId: string; state: RoomState; ice: IceConfig }
+  | { ok: true; selfId: string; state: RoomState; ice: IceConfig; chat: ChatMessage[] }
   | { ok: false; error: JoinError };
 
 export type Ack = { ok: true } | { ok: false; error: string };
@@ -105,6 +121,8 @@ export interface ServerToClientEvents {
   reaction: (reaction: ReactionEvent) => void;
   signal: (msg: { from: string; channel: SignalChannel; data: SignalPayload }) => void;
   notice: (notice: { text: string; tone?: 'info' | 'warn' }) => void;
+  'chat:message': (message: ChatMessage) => void;
+  'chat:typing': (typing: { id: string; typing: boolean }) => void;
   /** This socket was replaced by a newer connection from the same tab identity. */
   'room:kicked': (reason: string) => void;
 }
@@ -121,6 +139,8 @@ export interface ClientToServerEvents {
   'link:control': (ctl: { playing: boolean; position: number; rate?: number }) => void;
   'link:clear': () => void;
   'reaction:send': (r: { kind: ReactionKind; via: 'gesture' | 'button' }) => void;
+  'chat:send': (text: string, ack: (res: Ack) => void) => void;
+  'chat:typing': (typing: boolean) => void;
   signal: (msg: { to: string; channel: SignalChannel; data: SignalPayload }) => void;
   'time:sync': (ack: (serverNow: number) => void) => void;
 }
@@ -140,6 +160,19 @@ export function isValidRoomId(id: string): boolean {
 export function randomRoomId(randomInt: (max: number) => number): string {
   const pick = (n: number) => Array.from({ length: n }, () => ROOM_ALPHABET[randomInt(ROOM_ALPHABET.length)]).join('');
   return `${pick(3)}-${pick(4)}-${pick(3)}`;
+}
+
+/** Normalize a chat message: strip control characters (keeping newlines), trim, enforce the length cap. */
+export function cleanChatText(raw: unknown): string | null {
+  if (typeof raw !== 'string') return null;
+  const text = raw
+    .replace(/\r\n?/g, '\n')
+    // eslint-disable-next-line no-control-regex
+    .replace(/[\u0000-\u0009\u000B-\u001F\u007F]/g, '')
+    .replace(/\n{3,}/g, '\n\n')
+    .trim();
+  if (!text) return null;
+  return text.length > MAX_CHAT_LENGTH ? text.slice(0, MAX_CHAT_LENGTH) : text;
 }
 
 export function cleanName(raw: unknown): string | null {

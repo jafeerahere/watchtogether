@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import type { IceConfig, JoinError, ReactionEvent, RoomState } from '../../../shared/protocol';
+import { CHAT_HISTORY_LIMIT, type ChatMessage, type IceConfig, type JoinError, type ReactionEvent, type RoomState } from '../../../shared/protocol';
 import { getClientId } from '../lib/identity';
 import { createSocket, ServerClock, type RoomSocket } from '../lib/socket';
 
@@ -27,6 +27,9 @@ export function useRoom(roomId: string, name: string) {
   const [socket] = useState<RoomSocket>(() => createSocket());
   const [clock] = useState(() => new ServerClock());
   const reactionListeners = useRef(new Set<(r: ReactionEvent) => void>());
+  const [messages, setMessages] = useState<ChatMessage[]>([]);
+  const [typingIds, setTypingIds] = useState<string[]>([]);
+  const typingTimers = useRef(new Map<string, ReturnType<typeof setTimeout>>());
   const nameRef = useRef(name);
   nameRef.current = name;
 
@@ -48,8 +51,19 @@ export function useRoom(roomId: string, name: string) {
         setSelfId(res.selfId);
         setIce(res.ice);
         setState(res.state);
+        // Full history on every (re)join, so nothing is missed or duplicated across reconnects.
+        setMessages(res.chat);
         setStatus('joined');
       });
+    };
+    const setTyping = (id: string, typing: boolean) => {
+      const timers = typingTimers.current;
+      const old = timers.get(id);
+      if (old) clearTimeout(old);
+      timers.delete(id);
+      // Safety expiry in case the "stopped typing" event never arrives.
+      if (typing) timers.set(id, setTimeout(() => setTyping(id, false), 6000));
+      setTypingIds((ids) => (typing ? (ids.includes(id) ? ids : [...ids, id]) : ids.filter((x) => x !== id)));
     };
     socket.on('connect', () => {
       if (kicked) return;
@@ -63,6 +77,11 @@ export function useRoom(roomId: string, name: string) {
     socket.on('room:state', setState);
     socket.on('reaction', (r) => reactionListeners.current.forEach((fn) => fn(r)));
     socket.on('notice', (n) => notify(n.text, n.tone ?? 'info'));
+    socket.on('chat:message', (m) => {
+      setMessages((list) => (list.some((x) => x.id === m.id) ? list : [...list, m].slice(-CHAT_HISTORY_LIMIT)));
+      if (m.fromId) setTyping(m.fromId, false);
+    });
+    socket.on('chat:typing', ({ id, typing }) => setTyping(id, typing));
     socket.on('room:kicked', (reason) => {
       kicked = true;
       setStatus('kicked');
@@ -70,8 +89,11 @@ export function useRoom(roomId: string, name: string) {
       socket.disconnect();
     });
     if (socket.disconnected) socket.connect();
+    const timers = typingTimers.current;
     return () => {
       clock.stop();
+      timers.forEach((t) => clearTimeout(t));
+      timers.clear();
       socket.emit('room:leave');
       socket.removeAllListeners();
       socket.disconnect();
@@ -85,5 +107,5 @@ export function useRoom(roomId: string, name: string) {
     };
   };
 
-  return { status, error, state, selfId, ice, socket, clock, notices, notify, onReaction };
+  return { status, error, state, selfId, ice, socket, clock, notices, notify, onReaction, messages, typingIds };
 }

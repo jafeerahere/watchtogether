@@ -1,16 +1,21 @@
 // Room state machine. No Socket.IO here: the socket layer (index.ts) calls these methods
 // and broadcasts `toState()` whenever `onChange` fires. That keeps the rules unit-testable.
 
-import { randomInt } from 'node:crypto';
+import { randomInt, randomUUID } from 'node:crypto';
 import { checkMediaLink, forceFileSource, type MediaSourceInfo } from '../shared/links';
 import {
+  CHAT_BURST,
+  CHAT_HISTORY_LIMIT,
+  CHAT_WINDOW_MS,
   HOST_GRACE_MS,
   MAX_PARTICIPANTS,
   SERVER_REACTION_MIN_INTERVAL_MS,
+  cleanChatText,
   cleanName,
   expectedPosition,
   randomRoomId,
   type Ack,
+  type ChatMessage,
   type JoinError,
   type LinkPlayback,
   type Participant,
@@ -22,6 +27,8 @@ import {
 interface Member extends Participant {
   clientId: string;
   lastReactionAt: number;
+  /** Timestamps of recent chat messages, for the rate limit. */
+  chatTimes: number[];
 }
 
 export interface Room {
@@ -35,14 +42,22 @@ export interface Room {
   mode: RoomMode;
   link: LinkPlayback | null;
   share: ShareInfo | null;
+  /** Recent chat, oldest first, capped at CHAT_HISTORY_LIMIT. */
+  chat: ChatMessage[];
+  /** Pending "X left" notices by clientId, cancelled if that tab comes straight back (refresh). */
+  leaveNotices: Map<string, ReturnType<typeof setTimeout>>;
 }
 
 export interface RoomStoreOptions {
   onChange: (roomId: string) => void;
+  /** Called for every new chat message (user or system) so the socket layer can broadcast it. */
+  onChat?: (roomId: string, message: ChatMessage) => void;
   now?: () => number;
   hostGraceMs?: number;
   /** How long an empty room is kept before it's deleted. */
   emptyRoomTtlMs?: number;
+  /** Delay before announcing that someone left (a refresh within it stays silent). */
+  leaveNoticeDelayMs?: number;
 }
 
 export type JoinResult =
@@ -55,11 +70,13 @@ export class RoomStore {
   private readonly now: () => number;
   private readonly hostGraceMs: number;
   private readonly emptyRoomTtlMs: number;
+  private readonly leaveNoticeDelayMs: number;
 
   constructor(private readonly opts: RoomStoreOptions) {
     this.now = opts.now ?? Date.now;
     this.hostGraceMs = opts.hostGraceMs ?? HOST_GRACE_MS;
     this.emptyRoomTtlMs = opts.emptyRoomTtlMs ?? 30 * 60_000;
+    this.leaveNoticeDelayMs = opts.leaveNoticeDelayMs ?? 8_000;
   }
 
   create(hostClientId: string): Room {
@@ -75,6 +92,8 @@ export class RoomStore {
       mode: 'idle',
       link: null,
       share: null,
+      chat: [],
+      leaveNotices: new Map(),
     };
     this.rooms.set(id, room);
     this.scheduleEmptyCleanup(room);
@@ -124,8 +143,18 @@ export class RoomStore {
       gestures: false,
       playbackIssue: null,
       lastReactionAt: 0,
+      chatTimes: [],
     });
     this.socketRoom.set(socketId, roomId);
+
+    // Announce new arrivals, but stay quiet when a tab simply refreshed or reconnected.
+    const pendingLeave = room.leaveNotices.get(clientId);
+    if (pendingLeave) {
+      clearTimeout(pendingLeave);
+      room.leaveNotices.delete(clientId);
+    } else if (!replacedSocketId) {
+      this.postSystem(room, `${name} joined`);
+    }
 
     if (room.emptyTimer) {
       clearTimeout(room.emptyTimer);
@@ -142,8 +171,53 @@ export class RoomStore {
   leave(socketId: string): Room | undefined {
     const room = this.roomOf(socketId);
     if (!room) return undefined;
+    const member = room.members.get(socketId);
     this.removeMember(room, socketId);
+    if (member) this.scheduleLeaveNotice(room, member);
     return room;
+  }
+
+  private scheduleLeaveNotice(room: Room, member: Member) {
+    const existing = room.leaveNotices.get(member.clientId);
+    if (existing) clearTimeout(existing);
+    room.leaveNotices.set(
+      member.clientId,
+      setTimeout(() => {
+        room.leaveNotices.delete(member.clientId);
+        const back = [...room.members.values()].some((m) => m.clientId === member.clientId);
+        if (!back && this.rooms.has(room.id)) this.postSystem(room, `${member.name} left`);
+      }, this.leaveNoticeDelayMs),
+    );
+  }
+
+  // --- Chat -----------------------------------------------------------------------------------
+
+  private post(room: Room, message: ChatMessage) {
+    room.chat.push(message);
+    if (room.chat.length > CHAT_HISTORY_LIMIT) room.chat.splice(0, room.chat.length - CHAT_HISTORY_LIMIT);
+    this.opts.onChat?.(room.id, message);
+  }
+
+  private postSystem(room: Room, text: string) {
+    this.post(room, { id: randomUUID(), kind: 'system', fromId: null, fromName: null, text, at: this.now() });
+  }
+
+  sendChat(socketId: string, raw: unknown): Ack {
+    const room = this.roomOf(socketId);
+    const member = room?.members.get(socketId);
+    if (!room || !member) return { ok: false, error: 'Not in a room.' };
+    const text = cleanChatText(raw);
+    if (!text) return { ok: false, error: 'Message is empty.' };
+    const now = this.now();
+    member.chatTimes = member.chatTimes.filter((t) => now - t < CHAT_WINDOW_MS);
+    if (member.chatTimes.length >= CHAT_BURST) return { ok: false, error: "You're sending messages too fast. Wait a moment." };
+    member.chatTimes.push(now);
+    this.post(room, { id: randomUUID(), kind: 'user', fromId: socketId, fromName: member.name, text, at: now });
+    return { ok: true };
+  }
+
+  chatHistory(room: Room): ChatMessage[] {
+    return room.chat.slice();
   }
 
   private removeMember(room: Room, socketId: string) {
@@ -176,6 +250,7 @@ export class RoomStore {
     room.emptyTimer = setTimeout(() => {
       if (room.members.size > 0) return;
       if (room.hostGraceTimer) clearTimeout(room.hostGraceTimer);
+      for (const t of room.leaveNotices.values()) clearTimeout(t);
       this.rooms.delete(room.id);
     }, this.emptyRoomTtlMs);
   }

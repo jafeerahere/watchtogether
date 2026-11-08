@@ -167,6 +167,8 @@ function RoomPage({ roomId }: { roomId: string }) {
               e.preventDefault();
               if (!name.trim()) return;
               saveName(name.trim());
+              // A refresh of this tab rejoins directly instead of showing this form again.
+              window.history.replaceState({ autoJoin: true }, '');
               // This click also unlocks autoplay with sound for the shared stream and voice.
               setJoined(true);
             }}

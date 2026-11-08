@@ -51,8 +51,18 @@ Full mesh, one `voice` RTCPeerConnection per pair, using the **perfect negotiati
 
 The *Wow!* pose (both hands on the chin) isn't a built-in MediaPipe gesture. When two hands are visible, `FaceDetector` (BlazeFace) also runs. The chin is estimated from the eye and mouth keypoints (mouth + 0.55 × eyes→mouth, so it follows head tilt). The pose matches when both hands have a contact landmark (wrist, thumb, finger bases or tips) within 0.7 × face width of the chin, sit below the eyes, and are two distinct hands. When both hands are merely near the face, built-in gestures are suppressed so an open palm under the chin doesn't fire *Wait, doubt!*. `GestureDetector` turns frame labels into deliberate reactions: score ≥ 0.6, hold 700 ms, flicker tolerance 250 ms, 3 s cooldown, must release before repeating. The client applies a 2.5 s cooldown shared with the manual buttons; the server enforces 1 s per person. Only `{kind, via}` is sent.
 
+## Chat
+
+Chat rides the same Socket.IO connection as room state; no extra service.
+
+- **Send:** the client emits `chat:send` with an ack (5 s timeout). The server cleans the text (`cleanChatText`: strips control characters, keeps line breaks, trims, caps at 500 characters). It then rate-limits (5 messages per 5 s per person), stamps id, sender and server time, stores it, and broadcasts `chat:message` to the room. If sending fails, the draft stays in the box with the reason.
+- **History:** the room keeps the last 200 messages in memory, and the `room:join` ack includes them. Late joiners and reconnects therefore get the full history in one go, and the client replaces (not appends) its list on each join, so reconnects can't duplicate messages.
+- **Notices:** "X joined" is posted on a real join. "X left" waits 8 s and is cancelled if the same tab (same per-tab id) comes back, so refreshes and network blips stay silent.
+- **Typing:** `chat:typing` is relayed to everyone else, not stored. The client sends `true` on the first keystroke and `false` on send, blur, or 3 s idle. Receivers also expire it after 6 s, and the server sends `false` when a socket disconnects.
+- **Rendering:** messages are plain text rendered by React (escaped), so markup can't inject HTML. Only `http(s)` URLs become links, opened with `rel="noopener noreferrer nofollow"`. Consecutive messages from one person within 2 minutes are grouped. The list stays pinned to the bottom unless you've scrolled up, in which case a "N new messages ↓" pill appears.
+
 ## Limits and next steps
 
-- Rooms are in memory in one process, which is fine for small groups. Horizontal scaling would need Redis for room state plus the Socket.IO Redis adapter.
+- Rooms and chat history are in memory in one process, which is fine for small groups. Horizontal scaling would need Redis for room state plus the Socket.IO Redis adapter.
 - Mesh upload grows with room size: the host uploads one screen stream per guest (3 × 2.5 Mbps at 4 people). Past ~4–5 people, move screen share to an SFU (LiveKit, mediasoup).
-- Not built yet: text chat, playlists, HLS (`hls.js`), subtitles, room passwords.
+- Not built yet: playlists, HLS (`hls.js`), subtitles, room passwords, chat persistence beyond the server process.

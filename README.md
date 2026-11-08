@@ -1,12 +1,12 @@
 # WatchTogether
 
-**Study, watch, and react together.** Small watch-party rooms (up to 4 people) where the host shares any tab or plays a synced video, everyone talks over voice, and hand gestures pop memes on everyone's screen.
+**Study, watch, and react together.** Small watch-party rooms (up to 4 people) where the host shares any tab or plays a synced video, everyone talks over voice and live chat, and hand gestures pop memes on everyone's screen.
 
 Built first for studying with friends: share your slides or notes, and when someone gets lost they hold up an open palm and a **"Wait, doubt!"** meme stops the room.
 
 ![A guest watching the host's shared slides while a "Wait, doubt!" meme clip plays for the room](docs/images/room-demo.gif)
 
-<sub>A guest's view: the host shares slides and a friend fires <b>Wait, doubt!</b>. The clip plays with sound for everyone.</sub>
+<sub>A guest's view: the host shares slides, a friend asks a question in chat and fires <b>Wait, doubt!</b> (the clip plays with sound for everyone), and the host answers.</sub>
 
 ## Features
 
@@ -24,6 +24,12 @@ Built first for studying with friends: share your slides or notes, and when some
 **🎙️ Voice**
 - Mesh WebRTC voice chat, kept separate from shared-screen audio, with its own volume control.
 - Each person's row shows whether they're connected directly or through a TURN relay.
+
+**💬 Live chat**
+- Real-time room chat in the sidebar, with "Sam is typing…" indicators and clickable links.
+- People who join late or refresh get the recent history (last 200 messages).
+- "Sam joined" / "Sam left" notices, without spam when someone just refreshes.
+- Enter sends, Shift+Enter adds a new line. Messages are plain text (no HTML injection), up to 500 characters, rate-limited to 5 per 5 seconds.
 
 **✋ Gesture memes**
 - Camera is **off by default**. When on, MediaPipe recognizes gestures **on your device**, and only the reaction is sent to the room.
@@ -107,7 +113,7 @@ server/        rooms.ts (room rules), ice.ts (STUN/TURN), index.ts (HTTP + Socke
 client/src/
   rtc/         PeerMesh.ts (voice + screen WebRTC), media.ts (capture helpers)
   gestures/    detector.ts (hold/cooldown), chinPose.ts (wow pose), engine.ts (MediaPipe)
-  components/  Room, ShareStage, LinkStage, GesturePanel, MemeOverlay, Participants, …
+  components/  Room, ShareStage, LinkStage, ChatPanel, GesturePanel, MemeOverlay, Participants, …
 tests/         Vitest unit tests
 e2e/           Playwright multi-browser tests
 docs/          DEPLOY.md · TESTING.md · ARCHITECTURE.md
@@ -116,16 +122,17 @@ docs/          DEPLOY.md · TESTING.md · ARCHITECTURE.md
 ## Testing
 
 ```bash
-npm test                            # 41 unit tests
+npm test                            # 50 unit tests
 npm run build && npm run test:e2e   # multi-person browser tests (uses your installed Chrome)
 ```
 
 The end-to-end suite runs up to five separate browser sessions on one machine. It covers:
 - invite → screen share → voice → memes → synced YouTube and direct links → late join → full room → host refresh
+- live chat: typing indicator, links, HTML shown as text, history for late joiners and refreshes, join/leave notices, rate limit
 - a relay-only run through a TURN server
 
 **Not yet verified:** two real devices on different networks, real hand gestures in front of a real camera, and Firefox, Safari, and mobile browsers. The full breakdown, with measured sync offsets and a manual two-device checklist, is in [docs/TESTING.md](docs/TESTING.md).
 
 ## Status
 
-An early, working prototype. Room state is in memory (one server process, rooms reset on restart), and mesh WebRTC is sized for small rooms of up to 4 people. Contributions and bug reports are welcome.
+An early, working prototype. Room state and chat history are in memory (one server process, rooms reset on restart), and mesh WebRTC is sized for small rooms of up to 4 people. Contributions and bug reports are welcome.

@@ -45,7 +45,10 @@ const io: IO = new Server(server, {
   ...(env.CORS_ORIGIN ? { cors: { origin: env.CORS_ORIGIN.split(',') } } : {}),
 });
 
-const store = new RoomStore({ onChange: (roomId) => broadcast(roomId) });
+const store = new RoomStore({
+  onChange: (roomId) => broadcast(roomId),
+  onChat: (roomId, message) => io.to(roomId).emit('chat:message', message),
+});
 
 function broadcast(roomId: string) {
   const room = store.rooms.get(roomId);
@@ -137,6 +140,7 @@ io.on('connection', (socket: WSocket) => {
       selfId: socket.id,
       state: store.toState(result.room),
       ice: iceConfigFor(env, `${req.roomId}:${socket.id.slice(0, 8)}`),
+      chat: store.chatHistory(result.room),
     });
     broadcast(req.roomId);
   });
@@ -194,6 +198,16 @@ io.on('connection', (socket: WSocket) => {
     });
   });
 
+  socket.on('chat:send', (text, ack) => {
+    const res = store.sendChat(socket.id, text);
+    if (typeof ack === 'function') ack(res);
+  });
+
+  socket.on('chat:typing', (typing) => {
+    const room = store.roomOf(socket.id);
+    if (room) socket.to(room.id).emit('chat:typing', { id: socket.id, typing: typing === true });
+  });
+
   socket.on('signal', (msg) => {
     if (!msg || typeof msg.to !== 'string' || (msg.channel !== 'voice' && msg.channel !== 'screen')) return;
     if (!store.sameRoom(socket.id, msg.to)) return;
@@ -202,7 +216,10 @@ io.on('connection', (socket: WSocket) => {
 
   socket.on('disconnect', () => {
     const room = store.leave(socket.id);
-    if (room) broadcast(room.id);
+    if (room) {
+      socket.to(room.id).emit('chat:typing', { id: socket.id, typing: false });
+      broadcast(room.id);
+    }
   });
 });
 
