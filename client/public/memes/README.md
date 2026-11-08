@@ -23,16 +23,3 @@ ffmpeg -i source.mp4 -t 6.15 -vf "fade=t=out:st=5.9:d=0.25" -af "afade=t=out:st=
   -c:v libx264 -crf 24 -pix_fmt yuv420p -c:a aac -b:a 128k -movflags +faststart got-it.mp4
 ffmpeg -ss 1 -i got-it.mp4 -frames:v 1 got-it.jpg
 ```
-
-## Sources
-
-These are widely shared internet meme clips, collected from Pinterest. All rights belong to their
-original creators; open an issue if you own one and want it credited differently or removed.
-
-| File | Source | Edit |
-|---|---|---|
-| `got-it.mp4` | https://in.pinterest.com/pin/1130051731490659777/ | first 6.2 s (film clip; montage after the cut removed) |
-| `lets-go.mp4` | https://in.pinterest.com/pin/875739090028599548/ | 1.5–8.5 s |
-| `wait-doubt.mp4` | https://in.pinterest.com/pin/946459677970377898/ | first 6.2 s |
-| `wow.mp4` | https://in.pinterest.com/pin/1145181011520209611/ | unedited (4.2 s) |
-| `haha.mp4` | https://in.pinterest.com/pin/903112531582826569/ | first 6.2 s |

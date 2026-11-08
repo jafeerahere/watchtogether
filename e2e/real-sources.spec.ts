@@ -60,7 +60,7 @@ test('YouTube embed stays in sync for guests', async ({ browser }) => {
   const guest = await (await browser.newContext()).newPage();
   await join(guest, url, 'Guest');
 
-  // "Big Buck Bunny" (Blender Foundation, CC-BY), embeddable.
+  // A long, embeddable public video.
   await host.getByTestId('link-input').fill('https://www.youtube.com/watch?v=aqz-KE-bpKQ');
   await host.getByTestId('link-submit').click();
 

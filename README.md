@@ -4,7 +4,9 @@
 
 Built first for studying with friends: share your slides or notes, and when someone gets lost they hold up an open palm and a **"Wait, doubt!"** meme stops the room.
 
-![A guest watching the host's shared slides, with a "Wait, doubt!" reaction on screen](docs/images/room.png)
+![A guest watching the host's shared slides while a "Wait, doubt!" meme clip plays for the room](docs/images/room-demo.gif)
+
+<sub>A guest's view: the host shares slides and a friend fires <b>Wait, doubt!</b>. The clip plays with sound for everyone.</sub>
 
 ## Features
 
@@ -26,15 +28,14 @@ Built first for studying with friends: share your slides or notes, and when some
 **✋ Gesture memes**
 - Camera is **off by default**. When on, MediaPipe recognizes gestures **on your device**, and only the reaction is sent to the room.
 - Hold a gesture for about a second; a cooldown prevents spam. Every reaction also has a button for people without cameras.
-- Each reaction plays a short viral meme clip with sound for the whole room.
+- Each reaction plays a short viral meme clip **with sound** for the whole room.
 
-| Gesture | Reaction |
-|---|---|
-| 👍 Thumbs-up | **Got it** |
-| ✌️ Victory | **Let's go** |
-| ✋ Open palm | **Wait, doubt!** |
-| 🤩 Both hands on your chin | **Wow!** |
-| *(button only)* | 😹 **Haha** |
+### Meme player
+
+| 👍 **Got it** | ✌️ **Let's go** | ✋ **Wait, doubt!** | 🤩 **Wow!** | 😹 **Haha** |
+|:---:|:---:|:---:|:---:|:---:|
+| <img src="docs/images/memes/got-it.gif" alt="Got it meme" height="140"> | <img src="docs/images/memes/lets-go.gif" alt="Let's go meme" height="140"> | <img src="docs/images/memes/wait-doubt.gif" alt="Wait, doubt! meme" height="140"> | <img src="docs/images/memes/wow.gif" alt="Wow! meme" height="140"> | <img src="docs/images/memes/haha.gif" alt="Haha meme" height="140"> |
+| Thumbs-up | Victory | Open palm | Both hands on your chin | Button only |
 
 Mic, camera (gestures), and screen share are separate controls. The host role survives a page refresh and can be handed to someone else.
 
@@ -74,7 +75,7 @@ Browsers only allow the mic, camera, and screen capture over **HTTPS** (or on `l
 
 ## Meme clips
 
-Every reaction plays a short viral meme clip **with sound** for the whole room, and that's the signature feature. The clips live in `client/public/memes/`, with their sources credited in [client/public/memes/README.md](client/public/memes/README.md). Swap in your own by replacing a file (there's an ffmpeg one-liner for trimming). If a clip is missing, that reaction falls back to an animated emoji card, like the screenshot above.
+Every reaction plays a short meme clip **with sound** for the whole room; that's the signature feature (previews in the [meme player](#meme-player) above). The clips live in `client/public/memes/`. Swap in your own by replacing a file with the same name; [client/public/memes/README.md](client/public/memes/README.md) has the file names and an ffmpeg one-liner for trimming. If a clip is missing, that reaction falls back to an animated emoji card.
 
 To add or change reactions, edit `shared/reactions.ts`:
 - **Captions, colors, durations:** set on each reaction.
@@ -95,7 +96,6 @@ Browser (React + TypeScript)                  Node (Express + Socket.IO)
 
 - **Synced playback:** the server stores `{playing, position, rate, updatedAt}` stamped with its own clock. Clients estimate their clock offset and compute the live position. Guests correct drift; late joiners jump straight to it.
 - **WebRTC:** voice and screen share use separate peer connections per pair, with the "perfect negotiation" pattern, so either side can add a mic later without glare.
-- **Design origin:** the room protocol was informed by studying the open-source [WatchParty](https://github.com/howardchung/watchparty) codebase; no code was copied.
 
 More detail in [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md).
 

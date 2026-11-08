@@ -1,16 +1,14 @@
 # Architecture
 
-## Where the design came from
+## Key decisions
 
-WatchParty ([howardchung/watchparty](https://github.com/howardchung/watchparty)) is open source under the MIT license, so instead of black-box reverse engineering of the live site (which is what the [REA](https://github.com/morluto/rea) toolkit is for, e.g. closed binaries and apps), I read its actual server and client source. No code was copied; WatchTogether is a fresh implementation. What I learned, and what I did differently:
-
-| Topic | WatchParty | WatchTogether |
-|---|---|---|
-| Room protocol | Socket.IO namespace per room; `CMD:*` client→server, `REC:*` server→client events | Same split, typed in `shared/protocol.ts`. Whole room state is re-broadcast on each change (≤ 4 people, so it's tiny and avoids partial-update bugs). |
-| Playback sync | Discrete `REC:play` / `REC:pause` / `REC:seek` broadcasts plus a loose `videoTS` and per-user timestamp map | A **server-clock-stamped timeline** `{playing, position, rate, updatedAt}`. Clients estimate their clock offset NTP-style, then compute `position + (now − updatedAt) × rate`. Late joiners, refreshes, and drift correction all use the same formula. |
-| Control | Anyone can control by default (with an optional lock) | Host controls; guests have no controls and a click shield over the player. Host role survives refreshes (20 s grace, keyed by a per-tab id) and can be handed over. |
-| WebRTC | Separate signaling channels for video chat vs. screen share (`signal` / `signalSS`) | Same idea: `voice` and `screen` are separate RTCPeerConnections per pair, so shared audio never mixes with voice. |
-| TURN | TURN servers and static credentials hardcoded in the client bundle | Configured by env. Short-lived coturn REST credentials are handed out **only on room join**. |
+| Topic | Approach |
+|---|---|
+| Room protocol | Socket.IO events typed in `shared/protocol.ts`. The whole room state is re-broadcast on each change (≤ 4 people, so it's tiny and avoids partial-update bugs). |
+| Playback sync | A **server-clock-stamped timeline** `{playing, position, rate, updatedAt}`. Clients estimate their clock offset NTP-style, then compute `position + (now − updatedAt) × rate`. Late joiners, refreshes, and drift correction all use the same formula. |
+| Control | Host controls; guests have no controls and a click shield over the player. The host role survives refreshes (20 s grace, keyed by a per-tab id) and can be handed over. |
+| WebRTC | `voice` and `screen` are separate RTCPeerConnections per pair, so shared audio never mixes with voice. |
+| TURN | Configured by env. Short-lived coturn REST credentials are handed out **only on room join**, never baked into the client bundle. |
 
 ## Components
 
